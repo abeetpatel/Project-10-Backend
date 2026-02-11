@@ -4,6 +4,7 @@ import java.util.Enumeration;
 import java.util.LinkedHashSet;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 
@@ -79,43 +80,41 @@ public class LoginCtl extends BaseCtl<UserForm, UserDTO, UserServiceInt> {
 
 	@PostMapping("login")
 	public ORSResponse login(@RequestBody @Valid LoginForm form, BindingResult bindingResult, HttpSession session,
-			HttpServletRequest request) throws Exception {
-		System.out.println("loginCtl ki login API ko hit kiya");
-		ORSResponse res = validate(bindingResult);
+			HttpServletRequest request, HttpServletResponse response) {
 
+		System.out.println("loginCtl ki login API ko hit kiya");
+
+		ORSResponse res = new ORSResponse();
+
+		res = validate(bindingResult);
 		if (!res.isSuccess()) {
 			return res;
 		}
 
 		UserDTO dto = baseService.authenticate(form.getLoginId(), form.getPassword());
+
 		if (dto == null) {
 			System.out.println("dto == null ");
 			res.setSuccess(false);
 			res.addMessage("Invalid ID or Password");
-		} else {
-			UserContext context = new UserContext(dto);
-
-//			 session.setAttribute("userContext", context); 				
-
-			session.setAttribute("test", dto.getFirstName());
-
-			res.setSuccess(true);
-			res.addData(dto);
-			res.addResult("jsessionid", session.getId());
-			res.addResult("loginId", dto.getLoginId());
-			res.addResult("role", dto.getRoleName());
-			res.addResult("fname", dto.getFirstName());
-			res.addResult("lname", dto.getLastName());
-
-			/* System.out.println("jsessionid " + session.getId()); */
-			System.out.println("Before calling userDetail authenticate");
-
-			final String token = jwtUtil.generateToken(dto.getLoginId());
-
-			res.addResult("token", token);
 			return res;
-
 		}
+
+		// SUCCESS CASE
+		session.setAttribute("test", dto.getFirstName());
+
+		res.setSuccess(true);
+		res.addData(dto);
+		res.addResult("jsessionid", session.getId());
+		res.addResult("loginId", dto.getLoginId());
+		res.addResult("role", dto.getRoleName());
+		res.addResult("fname", dto.getFirstName());
+		res.addResult("lname", dto.getLastName());
+
+		final String token = jwtUtil.generateToken(dto.getLoginId());
+		res.addResult("token", token);
+
+		response.setStatus(HttpServletResponse.SC_OK); // 200
 
 		return res;
 	}

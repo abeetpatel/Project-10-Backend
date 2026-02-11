@@ -1,24 +1,43 @@
 package com.rays.common;
 
-import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.hibernate.exception.JDBCConnectionException;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * Handles application propagated exceptions
  * 
- * Abeet Patel 
+ * Abeet Patel
  *
  */
 
-
-@ControllerAdvice // handle exception globally
+@RestControllerAdvice
 public class ApplicationExceptionHandlerCtl {
 
-	@ExceptionHandler(value = RuntimeException.class) // custom exception handle
-	public ORSResponse handleRuntimeException(RuntimeException e){
+	// All database related problems
+	@ExceptionHandler({ CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
+			JDBCConnectionException.class })
+	public ResponseEntity<ORSResponse> handleDatabaseException(Exception e) {
+
 		ORSResponse res = new ORSResponse(false);
-		res.addMessage(e.getMessage() + "Abeet Patel");
-		return res;
+		res.addMessage("Database service is currently unavailable. Please try again later.");
+
+		return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE) // 503
+				.body(res);
 	}
 
+	// All other runtime exceptions
+	@ExceptionHandler(RuntimeException.class)
+	public ResponseEntity<ORSResponse> handleRuntimeException(RuntimeException e) {
+
+		ORSResponse res = new ORSResponse(false);
+		res.addMessage(e.getMessage());
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
+				.body(res);
+	}
 }

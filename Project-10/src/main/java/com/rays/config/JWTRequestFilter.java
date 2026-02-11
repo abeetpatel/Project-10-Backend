@@ -57,8 +57,25 @@ public class JWTRequestFilter extends OncePerRequestFilter {
 					SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 				}
 			} catch (Exception e) {
+				// DB related exceptions → return 503 directly
+				if (e instanceof org.springframework.transaction.CannotCreateTransactionException
+						|| e instanceof org.springframework.dao.DataAccessResourceFailureException
+						|| e instanceof org.hibernate.exception.JDBCConnectionException) {
+
+					response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+					response.setContentType("application/json");
+
+					response.getWriter().write(
+							"{\"success\":false,\"message\":[\"Database service is currently unavailable. Please try again later.\"]}");
+					return; // stop filter chain
+				}
+
+				// JWT related errors → 401
 				response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-				response.getWriter().write("Token is invalid... plz login again..!!");
+				response.setContentType("application/json");
+
+				response.getWriter().write(
+						"{\"success\":false,\"message\":[\"Token is invalid or expired. Please login again.\"]}");
 				return;
 			}
 		}
